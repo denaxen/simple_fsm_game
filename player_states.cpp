@@ -191,7 +191,6 @@ public:
         ground.push_back({{180, 700}, {441, window_height}});
         ground.push_back({{440, 770}, {636, window_height}});
         ground.push_back({{635, 700}, {window_width, window_height}});
-        ground.push_back({{380, 142}, {560, 350}});
 	}
 	void draw(sf::RenderWindow& window)
 	{
