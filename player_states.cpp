@@ -12,7 +12,7 @@ struct rect
 	sf::Vector2f a, b;
 };
 
-struct line
+struct platf
 {
     sf::Vector2f a, b;
 };
@@ -75,6 +75,8 @@ public:
 	virtual void start_running(Player* sm) = 0;
 	virtual void stop(Player* sm) = 0;
 	virtual void jump(Player* sm) = 0;
+	virtual void start_sliding(Player* sm) = 0;
+	virtual void hook(Player* sm) = 0;
 	void update(float dt)
 	{
 		animation.update(dt);
@@ -97,6 +99,8 @@ public:
 	void start_running(Player* player);
 	void stop(Player* player);
 	void jump(Player* sm);
+	void start_sliding(Player* sm);
+	void hook(Player* sm);
 };
 
 class Running : public PlayerState
@@ -110,6 +114,8 @@ public:
 	void start_running(Player* player);
 	void stop(Player* player);
 	void jump(Player* sm);
+	void start_sliding(Player* sm);
+	void hook(Player* sm);
 };
 
 class Jumping : public PlayerState
@@ -123,6 +129,38 @@ public:
 	void start_running(Player* player);
 	void stop(Player* player);
 	void jump(Player* sm);
+	void start_sliding(Player* sm);
+	void hook(Player* sm);
+};
+
+class Sliding : public PlayerState
+{
+public:
+	Sliding()
+	{
+		animation = Animation({ 0, 190, 19, 36}, 2, 2);
+		cout << "Creating Sliding state" << endl;
+	}
+	void jump(Player* sm);
+	void start_running(Player* sm);
+	void stop(Player* sm);
+	void start_sliding(Player* sm);
+	void hook(Player* sm);
+};
+
+class Hooked : public PlayerState
+{
+public:
+	Hooked()
+	{
+		animation = Animation({ 0, 118, 20, 50 }, 6, 6);
+		cout << "Creating Hooked state" << endl;
+	}
+	void jump(Player* sm);
+	void start_running(Player* sm){}
+	void stop(Player* sm){}
+	void start_sliding(Player* sm){}
+	void hook(Player* sm) {}
 };
 
 class World
@@ -131,7 +169,7 @@ private:
 	sf::Texture texture_background;
 	sf::Sprite sprite_background;
 	list<rect> ground;
-	list<line> platforms;
+	list<platf> platforms;
 public:
 	World()
 	{
@@ -145,11 +183,12 @@ public:
     	sprite_background.setScale(float(window_width) / float(texture_background.getSize().x), 
     		float(window_height) / float(texture_background.getSize().y));
         platforms.push_back({{230, 140}, {580, 140}});
-        platforms.push_back({{179, 460}, {300, 460}});
-        ground.push_back({{-10, 460}, {180, window_height}});
-        ground.push_back({{180, 700}, {440, window_height}});
-        ground.push_back({{440, 770}, {635, window_height}});
+        platforms.push_back({{180, 459}, {310, 459}});
+        ground.push_back({{-10, 460}, {181, window_height}});
+        ground.push_back({{180, 700}, {441, window_height}});
+        ground.push_back({{440, 770}, {636, window_height}});
         ground.push_back({{635, 700}, {window_width, window_height}});
+        ground.push_back({{380, 142}, {560, 350}});
 
 
     	
@@ -167,12 +206,15 @@ class Player
 {
 private:
 	PlayerState* state;
+	float sliding_timer;
 	
 	sf::Texture texture;
 	sf::Sprite sprite;
 
 	bool is_faced_right;
 	bool on_ground;
+	bool able_to_jump;
+	bool on_platform;
 	sf::Vector2f velocity;
 	sf::Vector2f position;
 	float gravity_force;
@@ -186,7 +228,7 @@ private:
 
 	enum States
 	{
-		idle, jumping, running
+		idle, jumping, running, sliding, hooked
 	};
 	States State;
 public:
@@ -208,50 +250,54 @@ public:
 		gravity_force = 25;
 		speed = 300.0;
 		on_ground = false;
+		sliding_timer = 0;
+		able_to_jump = false;
+		on_platform = false;
 	}
 
 	void gravitation (World& world)
     {
-        for (std::list<line>::iterator it = world.platforms.begin(); it != world.platforms.end(); it++)
+    	for (std::list<platf>::iterator it = world.platforms.begin(); it != world.platforms.end(); it++)
         {
             if (position.y > it->a.y && position.y < it->b.y + 20 && position.x < it->b.x && position.x > it->a.x && velocity.y > 0)
             {
                 velocity.y = 0;
                 position.y = it->a.y;
+                //cout << on_ground << endl;
                 on_ground = true;
+                //cout << on_ground << endl;
+                able_to_jump = true;
+                on_platform = true;
                 if (velocity.x == 0)
                     state->stop(this);
                 else
                     state->start_running(this);
-                return;
             }
-            if (position.y < it->a.y && position.x < it->b.x && position.x > it->a.x)
-            {
-                on_ground = false;
-                //velocity.y += gravity_force;
-                break;
-            }
+            
+            
         }
-	    for (std::list<rect>::iterator it = world.ground.begin(); it != world.ground.end(); it++)
+    	for (std::list<rect>::iterator it = world.ground.begin(); it != world.ground.end(); it++)
         {
 	        if (position.y > it->a.y && position.y < it->b.y && position.x < it->b.x && position.x > it->a.x)
 	        {
                 velocity.y = 0;
                 position.y = it->a.y;
                 on_ground = true;
+                able_to_jump = true;
                 if (velocity.x == 0)
                     state->stop(this);
                 else
                     state->start_running(this);
                 break;
             }
-            if (position.y < it->a.y && position.x < it->b.x && position.x > it->a.x)
+            if (position.y < it->a.y && position.x < it->b.x && position.x > it->a.x && State != States::hooked)
             {
-                on_ground = false;
                 velocity.y += gravity_force;
-                break;
+                //on_ground = false;
             }
         }
+        
+	    
 
     }
 
@@ -264,6 +310,7 @@ public:
             {
                 if (position.x <= it->b.x && position.x >= it->a.x)
                 {
+                	//cout << position.y << " " << it->a.y << endl;
                     position.x -= velocity.x * dt;
                     //break;
                 }
@@ -272,40 +319,68 @@ public:
                     //position.y += velocity.y * dt;
                 }
             }
+		}
+	}
 
-
+	void handle_hook (World& world)
+	{
+		if (State == States::jumping)
+		{
+			if (position.x <= 345 && position.x >= 315 && position.y <= 535 && position.y >= 515 && !is_faced_right)
+			{
+				state->hook(this);
+				velocity.y = 0;
+				position = {330, 525};
+			}
+			if (position.x <= 230 && position.x >= 200 && position.y <= 240 && position.y >= 225 && is_faced_right)
+			{
+				state->hook(this);
+				velocity.y = 0;
+				position = {220, 205};
+			}
 		}
 	}
 
 	void update(float dt, World& world)
 	{
 		state->update(dt);
-
-		velocity.x = 0;
-		//if (!on_ground)
-		    //velocity.y += gravity_force;
+		if (State == States::sliding)
+		{
+			if (sliding_timer > 1)
+				if (velocity.x != 0)
+					state->start_running(this);
+			if (velocity.x == 0)
+			{
+				state->start_running(this);
+				state->stop(this);
+			}
+		}
+		//cout << able_to_jump << endl;
+		
+		//cout << on_ground << endl;
 		//cout << State << endl;
-		//cout << position.x << " " << position.y << endl;
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::A))
+		cout << position.x << " " << position.y << endl;
+		velocity.x = 0;
+		if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::A)) && State != States::hooked)
 		{
 			velocity.x -= speed;
 			is_faced_right = false;
 		}
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) || sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+		if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Right) || sf::Keyboard::isKeyPressed(sf::Keyboard::D)) && State != States::hooked)
 		{
 			velocity.x += speed;
 			is_faced_right = true;
 		}
+		handle_hook(world);
 		gravitation(world);
         handle_ground(world, dt);
-		//if((position.x <= window_width - 70) && position.x >= 0)
-			//position += velocity * dt;
 		if (position.x > window_width - 70)
 			position.x = window_width - 70;
 		if (position.x < 0)
 			position.x = 0;
 
 		sprite.setPosition(position);
+		sliding_timer += dt;
 	}
 
 	void draw(sf::RenderWindow& window)
@@ -325,12 +400,36 @@ public:
 					state->start_running(this);
 			}
 
+			if ((event.key.code == sf::Keyboard::Left || event.key.code == sf::Keyboard::Right || event.key.code == sf::Keyboard::Down ||
+				 event.key.code == sf::Keyboard::A || event.key.code == sf::Keyboard::D || event.key.code == sf::Keyboard::S) && State == States::hooked)
+			{
+				if (position.y == 525)
+					position.y = 536;
+				if (position.y == 205)
+					position.y = 241;
+				state->jump(this);
+			}
+			if ((event.key.code == sf::Keyboard::Up || event.key.code == sf::Keyboard::W) && State == States::hooked)
+			{
+				if (position.y == 525)
+					position = {290, 450};
+				if (position.y == 205)
+					position = {255, 130};
+				state->jump(this);
+			}
+
 			if ((event.key.code == sf::Keyboard::W || event.key.code == sf::Keyboard::Up) && on_ground)
 			{
 				state->jump(this);
 				position.y -= 30;
-                velocity.y = -1000;
+                velocity.y = -800;
                 on_ground = false;
+			}
+
+			if (event.key.code == sf::Keyboard::LShift || event.key.code == sf::Keyboard::Down || event.key.code == sf::Keyboard::S)
+			{
+				state->start_sliding(this);
+				sliding_timer = 0;
 			}
 
 		}
@@ -360,6 +459,8 @@ public:
 	friend class Idle;
 	friend class Running;
 	friend class Jumping;
+	friend class Hooked;
+	friend class Sliding;
 };
 
 
@@ -379,6 +480,14 @@ void Idle::stop(Player* player)
 {
 }
 
+void Idle::hook(Player* player)
+{
+}
+
+void Idle::start_sliding(Player* player)
+{
+}
+
 void Running::start_running(Player* player)
 {
 }
@@ -393,6 +502,16 @@ void Running::stop(Player* player)
 {
 	player->set_state(new Idle());
 	player->State = player->States::idle;
+}
+
+void Running::hook(Player* player)
+{
+}
+
+void Running::start_sliding(Player* player)
+{
+	player->set_state(new Sliding());
+	player->State = player->States::sliding;
 }
 
 void Jumping::start_running(Player* player)
@@ -412,7 +531,39 @@ void Jumping::stop(Player* player)
 	player->State = player->States::idle;
 }
 
+void Jumping::hook(Player* player)
+{
+	player->set_state(new Hooked());
+	player->State = player->States::hooked;
+}
 
+void Jumping::start_sliding(Player* player)
+{
+}
+
+void Sliding::start_sliding(Player* player)
+{
+}
+void Sliding::jump(Player* player)
+{
+	player->set_state(new Jumping());
+	player->State = player->States::jumping;
+}
+void Sliding::stop(Player* player)
+{
+}
+void Sliding::start_running(Player* player)
+{
+	player->set_state(new Running());
+	player->State = player->States::running;
+}
+void Sliding::hook(Player* player)
+{}
+void Hooked::jump(Player* player)
+{
+	player->set_state(new Jumping());
+	player->State = player->States::jumping;
+}
 
 
 int main () 
