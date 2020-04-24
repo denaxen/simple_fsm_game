@@ -344,7 +344,7 @@ public:
 				state->stop(this);
 			}
 		}
-		cout << position.x << " " << position.y << endl;
+		//cout << position.x << " " << position.y << endl;
 		velocity.x = 0;
 		if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::A)) && State != States::hooked)
 		{
@@ -358,7 +358,7 @@ public:
 		}
 		handle_hook(world);
 		gravitation(world);
-        handle_ground(world, dt);
+		handle_ground(world, dt);
 		if (position.x > window_width - 70)
 			position.x = window_width - 70;
 		if (position.x < 0)
