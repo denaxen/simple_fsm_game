@@ -3,6 +3,9 @@
 #include <iostream>
 #include <list>
 
+//  S/Down/LShift - sliding
+//  W/Up - jump
+
 using namespace std;
 const int window_width = 1200;
 const int window_height = 900;
@@ -189,13 +192,9 @@ public:
         ground.push_back({{440, 770}, {636, window_height}});
         ground.push_back({{635, 700}, {window_width, window_height}});
         ground.push_back({{380, 142}, {560, 350}});
-
-
-    	
 	}
 	void draw(sf::RenderWindow& window)
 	{
-		
 		window.draw(sprite_background);
 	}
 	friend class Player;
@@ -246,7 +245,6 @@ public:
 		state = new Idle();
 		State = States::idle;
 		position = new_position;
-		//cout << position.x << " " << position.y << " " << new_position.x << endl;
 		gravity_force = 25;
 		speed = 300.0;
 		on_ground = false;
@@ -263,9 +261,7 @@ public:
             {
                 velocity.y = 0;
                 position.y = it->a.y;
-                //cout << on_ground << endl;
                 on_ground = true;
-                //cout << on_ground << endl;
                 able_to_jump = true;
                 on_platform = true;
                 if (velocity.x == 0)
@@ -293,7 +289,6 @@ public:
             if (position.y < it->a.y && position.x < it->b.x && position.x > it->a.x && State != States::hooked)
             {
                 velocity.y += gravity_force;
-                //on_ground = false;
             }
         }
         
@@ -310,13 +305,7 @@ public:
             {
                 if (position.x <= it->b.x && position.x >= it->a.x)
                 {
-                	//cout << position.y << " " << it->a.y << endl;
                     position.x -= velocity.x * dt;
-                    //break;
-                }
-                if (position.y < it->b.y)
-                {
-                    //position.y += velocity.y * dt;
                 }
             }
 		}
@@ -355,10 +344,6 @@ public:
 				state->stop(this);
 			}
 		}
-		//cout << able_to_jump << endl;
-		
-		//cout << on_ground << endl;
-		//cout << State << endl;
 		cout << position.x << " " << position.y << endl;
 		velocity.x = 0;
 		if ((sf::Keyboard::isKeyPressed(sf::Keyboard::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::A)) && State != States::hooked)
@@ -601,17 +586,3 @@ int main ()
 
 	return EXIT_SUCCESS;
 }
-
-
-
-/*
-	Задания:
-		1) Добавить остальные состояния. Они должны правильно отрисововаться.
-		   При этом понадобится внести изменения и в класс Player.
-		   Например, для состояния Jumping нужно будет добавить гравитацию
-		2) Добавить background.png на экран. 
-		   Персонаж должен правильно взаимодействовать с окружением.
-		   Это проще всего сделать введя новый класс World или Game, который будет содержать
-		   					экземпляр Player, а так же остальные параметры мира.
-
-*/
